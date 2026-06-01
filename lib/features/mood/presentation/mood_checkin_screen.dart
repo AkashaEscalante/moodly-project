@@ -326,18 +326,18 @@ class _MoodInsight extends ConsumerWidget {
 
 // ─── Intensity selector ───────────────────────────────────────────────────────
 
-class _IntensitySelector extends StatefulWidget {
+class _IntensitySelector extends ConsumerStatefulWidget {
   final bool isDark;
   const _IntensitySelector({required this.isDark});
 
   @override
-  State<_IntensitySelector> createState() => _IntensitySelectorState();
+  ConsumerState<_IntensitySelector> createState() => _IntensitySelectorState();
 }
 
-class _IntensitySelectorState extends State<_IntensitySelector> {
+class _IntensitySelectorState extends ConsumerState<_IntensitySelector> {
   @override
   Widget build(BuildContext context) {
-    final entryState = context.read(moodEntryNotifierProvider);
+    final entryState = ref.read(moodEntryNotifierProvider);
     final currentIntensity = entryState.intensity;
 
     return Column(
@@ -371,7 +371,7 @@ class _IntensitySelectorState extends State<_IntensitySelector> {
             final level = index + 1;
             final selected = level <= currentIntensity;
             return GestureDetector(
-              onTap: () => context
+              onTap: () => ref
                   .read(moodEntryNotifierProvider.notifier)
                   .setIntensity(level),
               child: AnimatedContainer(

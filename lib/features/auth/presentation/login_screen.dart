@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:moodly/features/auth/application/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -42,8 +43,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       await ref.read(authRepositoryProvider).signIn(email, password);
       if (mounted) context.go('/home');
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      final msg = switch (e.message.toLowerCase()) {
+        String m when m.contains('not confirmed') || m.contains('email not confirmed') =>
+          'Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.',
+        String m when m.contains('invalid') || m.contains('credentials') =>
+          'Email o contraseña incorrectos.',
+        String m when m.contains('network') || m.contains('connection') =>
+          'Sin conexión. Verifica tu internet.',
+        _ => 'Error: ${e.message}',
+      };
+      setState(() => _errorMessage = msg);
     } catch (_) {
-      if (mounted) setState(() => _errorMessage = 'Email o contraseña incorrectos');
+      if (mounted) setState(() => _errorMessage = 'Email o contraseña incorrectos.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

@@ -50,7 +50,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       await ref.read(authRepositoryProvider).signUp(email, password, name);
-      if (mounted) context.go('/onboarding');
+      if (!mounted) return;
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session != null) {
+        context.go('/onboarding');
+      } else {
+        setState(() => _errorMessage =
+            '¡Cuenta creada! Revisa tu correo electrónico y confirma tu cuenta para poder iniciar sesión.');
+      }
     } on AuthException catch (e) {
       if (!mounted) return;
       final msg = switch (e.message.toLowerCase()) {
