@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/core/widgets/shimmer_loader.dart';
+import 'package:moodly/features/auth/application/auth_provider.dart';
 import 'package:moodly/features/stats/application/stats_provider.dart';
 import 'package:moodly/features/stats/domain/mood_stats_model.dart';
 import 'package:moodly/features/stats/domain/wellness_model.dart';
@@ -21,8 +22,9 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final statsAsync = ref.watch(weeklyStatsProvider('userId'));
-    final wellnessAsync = ref.watch(wellnessProvider('userId'));
+    final userId = ref.watch(authStateProvider).valueOrNull?.id ?? '';
+    final statsAsync = ref.watch(weeklyStatsProvider(userId));
+    final wellnessAsync = ref.watch(wellnessProvider(userId));
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0D0D1A) : Colors.white,
@@ -38,7 +40,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           style: GoogleFonts.syne(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF333333),
+            color: isDark ? Colors.white : const Color(0xFF333333),
           ),
         ),
         centerTitle: true,

@@ -142,11 +142,77 @@ class _DiaryScreenState extends ConsumerState<DiaryScreen> {
           else
             ...pastEntries.asMap().entries.map((e) => Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: _EntryCard(entry: e.value, colorIndex: e.key, isDark: isDark),
+              child: _EntryCard(
+                entry: e.value,
+                colorIndex: e.key,
+                isDark: isDark,
+                onDelete: () => _confirmDelete(e.value.id, userId),
+              ),
             )),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete(String entryId, String userId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).brightness == Brightness.dark
+            ? const Color(0xFF1E1E2E)
+            : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          '¿Eliminar entrada?',
+          style: GoogleFonts.syne(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Esta acción no se puede deshacer.',
+          style: GoogleFonts.dmSans(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancelar', style: GoogleFonts.dmSans()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              'Eliminar',
+              style: GoogleFonts.dmSans(
+                color: Colors.red,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(diaryRepositoryProvider).deleteEntry(entryId);
+      ref.invalidate(gratitudeEntriesProvider(userId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Entrada eliminada',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+          backgroundColor: const Color(0xFF9C27B0),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al eliminar: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ));
+      }
+    }
   }
 
   Future<void> _save(String userId, GratitudeEntry? existing) async {
@@ -399,6 +465,7 @@ class _EntryCard extends StatelessWidget {
   final GratitudeEntry entry;
   final int colorIndex;
   final bool isDark;
+  final VoidCallback onDelete;
 
   static const _lightBg = [
     Color(0xFFFCE4EC),
@@ -436,7 +503,12 @@ class _EntryCard extends StatelessWidget {
     Icons.wb_sunny_rounded,
   ];
 
-  const _EntryCard({required this.entry, required this.colorIndex, required this.isDark});
+  const _EntryCard({
+    required this.entry,
+    required this.colorIndex,
+    required this.isDark,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -449,7 +521,14 @@ class _EntryCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,6 +542,9 @@ class _EntryCard extends StatelessWidget {
                     Text(entry.moodIcon!, style: const TextStyle(fontSize: 16)),
                     const SizedBox(width: 6),
                   ],
+                  Icon(Icons.calendar_today_rounded, size: 12,
+                      color: isDark ? const Color(0xFF9E9E9E) : const Color(0xFF888888)),
+                  const SizedBox(width: 4),
                   Text(
                     dateStr,
                     style: GoogleFonts.dmSans(
@@ -473,10 +555,25 @@ class _EntryCard extends StatelessWidget {
                   ),
                 ],
               ),
-              Icon(_icons[idx], size: 18, color: _iconColors[idx]),
+              Row(
+                children: [
+                  Icon(_icons[idx], size: 18, color: _iconColors[idx]),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: onDelete,
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 18,
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.35)
+                          : Colors.black.withValues(alpha: 0.25),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             '"${entry.content}"',
             style: GoogleFonts.dancingScript(

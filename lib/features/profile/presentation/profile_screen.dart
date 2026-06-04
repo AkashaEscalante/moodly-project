@@ -355,7 +355,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                     iconColor: const Color(0xFFFFA726),
                     textPrimary: textPrimary,
                     textSecondary: textSecondary,
-                    onTap: () {},
+                    onTap: () => context.go('/help'),
                   ),
                   const SizedBox(height: 10),
                   _LinkCard(
@@ -367,7 +367,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                     iconColor: const Color(0xFFF48FB1),
                     textPrimary: textPrimary,
                     textSecondary: textSecondary,
-                    onTap: () {},
+                    onTap: () => context.go('/privacy'),
                   ),
                 ],
               ),

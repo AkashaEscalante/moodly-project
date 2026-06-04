@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:moodly/core/widgets/testimonial_card.dart';
 
 class ConsejosScreen extends ConsumerWidget {
   const ConsejosScreen({super.key});
@@ -53,6 +54,8 @@ class ConsejosScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             _DisclaimerCard(isDark: isDark),
+            const SizedBox(height: 16),
+            const TestimonialCard(),
           ],
         ),
       ),

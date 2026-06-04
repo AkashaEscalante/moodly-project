@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:moodly/features/auth/presentation/login_screen.dart';
 import 'package:moodly/features/auth/presentation/register_screen.dart';
 import 'package:moodly/features/auth/presentation/onboarding/onboarding_screen.dart';
+import 'package:moodly/features/chat/presentation/ai_chat_screen.dart';
 import 'package:moodly/features/home/presentation/home_screen.dart';
 import 'package:moodly/features/mood/presentation/mood_checkin_screen.dart';
 import 'package:moodly/features/mood/presentation/mood_history_screen.dart';
@@ -11,6 +12,8 @@ import 'package:moodly/features/resources/presentation/resources_screen.dart';
 import 'package:moodly/features/resources/presentation/consejos_screen.dart';
 import 'package:moodly/features/profile/presentation/profile_screen.dart';
 import 'package:moodly/features/profile/presentation/edit_profile_screen.dart';
+import 'package:moodly/features/profile/presentation/help_center_screen.dart';
+import 'package:moodly/features/profile/presentation/privacy_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -53,6 +56,18 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/edit-profile',
       builder: (context, state) => const EditProfileScreen(),
+    ),
+    GoRoute(
+      path: '/help',
+      builder: (context, state) => const HelpCenterScreen(),
+    ),
+    GoRoute(
+      path: '/privacy',
+      builder: (context, state) => const PrivacyScreen(),
+    ),
+    GoRoute(
+      path: '/ai-chat',
+      builder: (context, state) => const AiChatScreen(),
     ),
   ],
 );

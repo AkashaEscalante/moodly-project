@@ -26,6 +26,10 @@ class DiaryRepository {
     return data != null ? GratitudeEntry.fromJson(data) : null;
   }
 
+  Future<void> deleteEntry(String id) async {
+    await _client.from('gratitude_entries').delete().eq('id', id);
+  }
+
   Future<void> saveEntry({
     required String userId,
     required String content,

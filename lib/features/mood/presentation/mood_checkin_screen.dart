@@ -337,7 +337,7 @@ class _IntensitySelector extends ConsumerStatefulWidget {
 class _IntensitySelectorState extends ConsumerState<_IntensitySelector> {
   @override
   Widget build(BuildContext context) {
-    final entryState = ref.read(moodEntryNotifierProvider);
+    final entryState = ref.watch(moodEntryNotifierProvider);
     final currentIntensity = entryState.intensity;
 
     return Column(

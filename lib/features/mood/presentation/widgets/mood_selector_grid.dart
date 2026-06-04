@@ -57,21 +57,28 @@ class MoodSelectorGrid extends ConsumerWidget {
                       ),
                     ],
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(mood.emoji, style: const TextStyle(fontSize: 36)),
-                const SizedBox(height: 8),
-                Text(
-                  mood.name.toUpperCase(),
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: baseColor.withValues(alpha: isSelected ? 1 : 0.8),
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ],
+            child: Builder(
+              builder: (ctx) {
+                final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(mood.emoji, style: const TextStyle(fontSize: 36)),
+                    const SizedBox(height: 8),
+                    Text(
+                      mood.name.toUpperCase(),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected
+                            ? (isDark ? Colors.white : const Color(0xFF222222))
+                            : (isDark ? const Color(0xFFCCCCCC) : const Color(0xFF444444)),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );
