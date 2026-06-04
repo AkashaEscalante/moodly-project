@@ -32,7 +32,8 @@ class HomeScreen extends ConsumerWidget {
         : (userAsync.valueOrNull?.email.split('@').first ?? 'tú');
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF8F5FF),
+      backgroundColor:
+          isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF8F5FF),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
@@ -173,7 +174,7 @@ class _MotivationalBanner extends ConsumerWidget {
 
   static const _fallbackQuotes = [
     ('Cada emoción que sientes es válida.', '🌸'),
-    ('Hoy es un buen día para conocerte mejor.', '✨'),
+    ('Hoy es un buen día para conocerte mejor.', '💜'),
     ('Tu bienestar emocional importa. Cuídate.', '💜'),
     ('Registrar cómo te sientes es un acto de amor propio.', '🌟'),
     ('Eres más fuerte de lo que crees. Sigue adelante.', '🦋'),
@@ -186,10 +187,12 @@ class _MotivationalBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final msgAsync = ref.watch(dailyMessageProvider);
-    final fallback = _fallbackQuotes[DateTime.now().day % _fallbackQuotes.length];
+    final fallback =
+        _fallbackQuotes[DateTime.now().day % _fallbackQuotes.length];
     final dbMessage = msgAsync.valueOrNull ?? '';
     final text = dbMessage.isNotEmpty ? dbMessage : fallback.$1;
     final emoji = dbMessage.isNotEmpty ? '💜' : fallback.$2;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -294,10 +297,8 @@ class _QuickMoodCard extends StatelessWidget {
               GestureDetector(
                 onTap: () => context.go('/mood-checkin'),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -386,15 +387,18 @@ class _WeeklySummary extends StatelessWidget {
       final freq = <String, int>{};
       for (final e in entries) {
         final name = (e['mood'] as Map?)?['name'] as String? ?? '';
-        freq[name] = (freq[name] ?? 0) + 1;
+        if (name.isNotEmpty) freq[name] = (freq[name] ?? 0) + 1;
       }
-      final topEntry = freq.entries.reduce((a, b) => a.value >= b.value ? a : b);
-      topMoodName = topEntry.key;
-      final topMoodData = (entries.firstWhere(
-        (e) => (e['mood'] as Map?)?['name'] == topMoodName,
-        orElse: () => {},
-      )['mood'] as Map?);
-      topMoodEmoji = topMoodData?['emoji'] as String? ?? '💜';
+      if (freq.isNotEmpty) {
+        final topEntry =
+            freq.entries.reduce((a, b) => a.value >= b.value ? a : b);
+        topMoodName = topEntry.key;
+        final topMoodData = entries.firstWhere(
+          (e) => (e['mood'] as Map?)?['name'] == topMoodName,
+          orElse: () => {},
+        )['mood'] as Map?;
+        topMoodEmoji = topMoodData?['emoji'] as String? ?? '💜';
+      }
     }
 
     return Column(
@@ -433,8 +437,8 @@ class _WeeklySummary extends StatelessWidget {
                 value: count > 0 ? '$count' : '—',
                 label: 'Registros\nesta semana',
                 gradientColors: [
-                  const Color(0xFF9C27B0).withValues(alpha: isDark ? 0.25 : 0.1),
-                  const Color(0xFF7B1FA2).withValues(alpha: isDark ? 0.15 : 0.05),
+                  Color(0xFF9C27B0).withValues(alpha: isDark ? 0.25 : 0.1),
+                  Color(0xFF7B1FA2).withValues(alpha: isDark ? 0.15 : 0.05),
                 ],
                 valueColor: const Color(0xFF9C27B0),
                 cardColor: cardColor,
@@ -449,8 +453,8 @@ class _WeeklySummary extends StatelessWidget {
                 value: topMoodName,
                 label: 'Emoción más\nfrecuente',
                 gradientColors: [
-                  const Color(0xFFF48FB1).withValues(alpha: isDark ? 0.25 : 0.1),
-                  const Color(0xFFE91E8C).withValues(alpha: isDark ? 0.15 : 0.05),
+                  Color(0xFFF48FB1).withValues(alpha: isDark ? 0.25 : 0.1),
+                  Color(0xFFE91E8C).withValues(alpha: isDark ? 0.15 : 0.05),
                 ],
                 valueColor: const Color(0xFFE91E8C),
                 cardColor: cardColor,
@@ -494,6 +498,7 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
+        // Solo el gradiente — color: cardColor no se usa cuando hay gradient
         gradient: LinearGradient(
           colors: gradientColors,
           begin: Alignment.topLeft,
@@ -507,22 +512,26 @@ class _SummaryCard extends StatelessWidget {
         children: [
           Text(emoji, style: const TextStyle(fontSize: 26)),
           const SizedBox(height: 10),
-          Text(
-            value,
-            style: GoogleFonts.syne(
-              fontSize: smallValue ? 16 : 28,
-              fontWeight: FontWeight.bold,
-              color: valueColor,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: GoogleFonts.syne(
+                fontSize: smallValue ? 16 : 28,
+                fontWeight: FontWeight.bold,
+                color: valueColor,
+              ),
+              maxLines: 1,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: GoogleFonts.dmSans(
               fontSize: 11,
-              color: isDark ? const Color(0xFF9E9E9E) : const Color(0xFF888888),
+              color: isDark
+                  ? const Color(0xFF9E9E9E)
+                  : const Color(0xFF888888),
               height: 1.4,
             ),
           ),
@@ -535,7 +544,7 @@ class _SummaryCard extends StatelessWidget {
 // ─── Recent emotions ──────────────────────────────────────────────────────────
 
 class _RecentEmotionsSection extends StatelessWidget {
-  final AsyncValue entriesAsync;
+  final AsyncValue<List<dynamic>> entriesAsync;
   final bool isDark;
 
   const _RecentEmotionsSection({
@@ -577,15 +586,14 @@ class _RecentEmotionsSection extends StatelessWidget {
           loading: () => const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: CircularProgressIndicator(),
+              child: CircularProgressIndicator(color: Color(0xFF9C27B0)),
             ),
           ),
-          error: (_, _) => _EmptyEmotionsCard(isDark: isDark),
+          error: (_, __) => _EmptyEmotionsCard(isDark: isDark),
           data: (entries) {
-            final list = entries is List ? entries : [];
-            if (list.isEmpty) return _EmptyEmotionsCard(isDark: isDark);
+            if (entries.isEmpty) return _EmptyEmotionsCard(isDark: isDark);
             return Column(
-              children: list.take(3).map<Widget>((entry) {
+              children: entries.take(3).map<Widget>((entry) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _EmotionCard(entry: entry, isDark: isDark),
@@ -609,13 +617,13 @@ class _EmotionCard extends StatelessWidget {
     final cardColor = isDark ? const Color(0xFF1E1E2E) : Colors.white;
     final borderColor =
         isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF0F0F0);
-    final emoji = entry.mood?.emoji ?? '🙂';
-    final name = entry.mood?.name ?? 'Emoción';
+    final emoji = entry.mood?.emoji as String? ?? '🙂';
+    final name = entry.mood?.name as String? ?? 'Emoción';
     final createdAt = entry.createdAt as DateTime;
     final time = DateFormat('HH:mm').format(createdAt);
     final day = _dayLabel(createdAt);
-    final hasThought =
-        entry.note != null && (entry.note as String).isNotEmpty;
+    final note = entry.note as String?;
+    final hasNote = note != null && note.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -670,17 +678,15 @@ class _EmotionCard extends StatelessWidget {
               ],
             ),
           ),
-          if (hasThought)
+          if (hasNote)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: const Color(0xFF9C27B0).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                '📝',
-                style: const TextStyle(fontSize: 14),
-              ),
+              child: const Text('📝', style: TextStyle(fontSize: 14)),
             ),
         ],
       ),
@@ -689,8 +695,15 @@ class _EmotionCard extends StatelessWidget {
 
   String _dayLabel(DateTime dt) {
     final now = DateTime.now();
-    if (dt.day == now.day && dt.month == now.month) return 'Hoy';
-    if (dt.day == now.day - 1 && dt.month == now.month) return 'Ayer';
+    if (dt.day == now.day && dt.month == now.month && dt.year == now.year) {
+      return 'Hoy';
+    }
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (dt.day == yesterday.day &&
+        dt.month == yesterday.month &&
+        dt.year == yesterday.year) {
+      return 'Ayer';
+    }
     return DateFormat('d MMM', 'es').format(dt);
   }
 }
@@ -742,7 +755,8 @@ class _EmptyEmotionsCard extends StatelessWidget {
           GestureDetector(
             onTap: () => context.go('/mood-checkin'),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
@@ -828,7 +842,7 @@ class _MayaChatCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Tu asistente de bienestar emocional está aquí para ti 💜',
+                    'Tu asistente de bienestar emocional está aquí para ti',
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       color: Colors.white70,
@@ -906,7 +920,8 @@ class _RegisterFab extends StatelessWidget {
 class _MoodlyBottomNav extends StatelessWidget {
   final int currentIndex;
   final bool isDark;
-  const _MoodlyBottomNav({required this.currentIndex, required this.isDark});
+  const _MoodlyBottomNav(
+      {required this.currentIndex, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -928,11 +943,41 @@ class _MoodlyBottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _NavItem(icon: Icons.home_rounded, label: 'Inicio', index: 0, currentIndex: currentIndex, route: '/home', isDark: isDark),
-              _NavItem(icon: Icons.emoji_emotions_outlined, label: 'Ánimo', index: 1, currentIndex: currentIndex, route: '/mood-checkin', isDark: isDark),
-              _NavItem(icon: Icons.auto_stories_outlined, label: 'Guía', index: 2, currentIndex: currentIndex, route: '/consejos', isDark: isDark),
-              _NavItem(icon: Icons.menu_book_outlined, label: 'Diario', index: 3, currentIndex: currentIndex, route: '/diary', isDark: isDark),
-              _NavItem(icon: Icons.person_rounded, label: 'Perfil', index: 4, currentIndex: currentIndex, route: '/profile', isDark: isDark),
+              _NavItem(
+                  icon: Icons.home_rounded,
+                  label: 'Inicio',
+                  index: 0,
+                  currentIndex: currentIndex,
+                  route: '/home',
+                  isDark: isDark),
+              _NavItem(
+                  icon: Icons.emoji_emotions_outlined,
+                  label: 'Ánimo',
+                  index: 1,
+                  currentIndex: currentIndex,
+                  route: '/mood-checkin',
+                  isDark: isDark),
+              _NavItem(
+                  icon: Icons.auto_stories_outlined,
+                  label: 'Guía',
+                  index: 2,
+                  currentIndex: currentIndex,
+                  route: '/consejos',
+                  isDark: isDark),
+              _NavItem(
+                  icon: Icons.menu_book_outlined,
+                  label: 'Diario',
+                  index: 3,
+                  currentIndex: currentIndex,
+                  route: '/diary',
+                  isDark: isDark),
+              _NavItem(
+                  icon: Icons.person_rounded,
+                  label: 'Perfil',
+                  index: 4,
+                  currentIndex: currentIndex,
+                  route: '/profile',
+                  isDark: isDark),
             ],
           ),
         ),
@@ -986,9 +1031,9 @@ class _NavItem extends StatelessWidget {
             Text(
               label,
               style: GoogleFonts.dmSans(
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w500,
+                    selected ? FontWeight.bold : FontWeight.normal,
                 color: selected
                     ? const Color(0xFF9C27B0)
                     : const Color(0xFFAAAAAA),
