@@ -102,7 +102,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
+                      onTap: () => context.pop(),
                       child: Container(
                         margin: const EdgeInsets.only(top: 12),
                         padding: const EdgeInsets.all(8),

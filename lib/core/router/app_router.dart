@@ -12,6 +12,7 @@ import 'package:moodly/features/resources/presentation/resources_screen.dart';
 import 'package:moodly/features/resources/presentation/consejos_screen.dart';
 import 'package:moodly/features/profile/presentation/profile_screen.dart';
 import 'package:moodly/features/profile/presentation/edit_profile_screen.dart';
+import 'package:moodly/features/premium/presentation/payment_screen.dart';
 import 'package:moodly/features/premium/presentation/premium_screen.dart';
 import 'package:moodly/features/profile/presentation/help_center_screen.dart';
 import 'package:moodly/features/profile/presentation/privacy_screen.dart';
@@ -73,6 +74,17 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/ai-chat',
       builder: (context, state) => const AiChatScreen(),
+    ),
+    GoRoute(
+      path: '/payment',
+      builder: (context, state) {
+        final extra = (state.extra as Map<String, String>?) ?? {};
+        return PaymentScreen(
+          planName: extra['planName'] ?? 'Premium',
+          price: extra['price'] ?? '89',
+          period: extra['period'] ?? 'MXN / mes',
+        );
+      },
     ),
   ],
 );

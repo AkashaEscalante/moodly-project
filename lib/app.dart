@@ -17,6 +17,11 @@ class MoodlyApp extends ConsumerWidget {
       themeMode: themeMode,
       debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
+      // Previene canvas negro durante transiciones de ruta
+      builder: (context, child) => ColoredBox(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

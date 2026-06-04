@@ -67,6 +67,8 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   }
 
   Widget _buildContent(MoodStats stats, WellnessData wellness) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF222222);
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -102,7 +104,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                   style: GoogleFonts.syne(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF222222),
+                    color: textPrimary,
                   ),
                 ),
                 TextSpan(
@@ -124,7 +126,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             style: GoogleFonts.syne(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF222222),
+              color: textPrimary,
             ),
           ),
           const SizedBox(height: 14),
@@ -160,7 +162,9 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                 child: _WellnessCard(
                   icon: '🌙',
                   label: 'SUEÑO',
-                  value: '${wellness.sleepHours.toStringAsFixed(1)}h',
+                  value: wellness.sleepHours > 0
+                      ? '${wellness.sleepHours.toStringAsFixed(1)}h'
+                      : 'Sin datos',
                   color: const Color(0xFF9C27B0),
                 ),
               ),
@@ -169,7 +173,9 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                 child: _WellnessCard(
                   icon: '💗',
                   label: 'ENERGÍA',
-                  value: '${wellness.energyPct.toInt()}%',
+                  value: wellness.energyPct > 0
+                      ? '${wellness.energyPct.toInt()}%'
+                      : 'Sin datos',
                   color: const Color(0xFFF06292),
                 ),
               ),
@@ -184,7 +190,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                 style: GoogleFonts.syne(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF222222),
+                  color: textPrimary,
                 ),
               ),
               Text(
@@ -199,9 +205,21 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          _FactorRow(icon: '🧘', label: 'Meditación', value: '${wellness.meditationMin.toInt()} min'),
+          _FactorRow(
+            icon: '🧘',
+            label: 'Meditación',
+            value: wellness.meditationMin > 0
+                ? '${wellness.meditationMin.toInt()} min'
+                : 'Sin datos',
+          ),
           const SizedBox(height: 12),
-          _FactorRow(icon: '💧', label: 'Hidratación', value: '${wellness.hydrationL.toStringAsFixed(1)} L'),
+          _FactorRow(
+            icon: '💧',
+            label: 'Hidratación',
+            value: wellness.hydrationL > 0
+                ? '${wellness.hydrationL.toStringAsFixed(1)} L'
+                : 'Sin datos',
+          ),
           const SizedBox(height: 32),
         ],
       ),

@@ -326,29 +326,13 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUser = message.isUser;
 
-    return Padding(
+    final bubble = Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isUser) ...[
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFFF80AB), Color(0xFF9C27B0)],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Text('🐱', style: TextStyle(fontSize: 14)),
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -397,6 +381,12 @@ class _MessageBubble extends StatelessWidget {
         ],
       ),
     );
+
+    if (!isLatest) return bubble;
+    return bubble
+        .animate()
+        .fadeIn(duration: 260.ms)
+        .slideY(begin: 0.06, duration: 260.ms, curve: Curves.easeOut);
   }
 }
 
@@ -445,10 +435,8 @@ class _ThinkingDotsState extends State<_ThinkingDots>
                 child: Container(
                   width: 8,
                   height: 8,
-                  decoration: BoxDecoration(
-                    color: widget.isDark
-                        ? Colors.white60
-                        : const Color(0xFF9C27B0),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFCE93D8),
                     shape: BoxShape.circle,
                   ),
                 ),

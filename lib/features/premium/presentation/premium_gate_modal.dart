@@ -98,7 +98,7 @@ class _PremiumGateSheet extends StatelessWidget {
           GestureDetector(
             onTap: () {
               Navigator.of(context).pop();
-              context.go('/premium');
+              context.push('/premium');
             },
             child: Container(
               width: double.infinity,

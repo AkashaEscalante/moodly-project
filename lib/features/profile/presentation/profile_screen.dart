@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/core/providers/theme_provider.dart';
 import 'package:moodly/features/auth/application/auth_provider.dart'
     show authStateProvider, authRepositoryProvider;
+import 'package:moodly/features/premium/application/premium_provider.dart';
 import 'package:moodly/features/profile/application/profile_provider.dart'
     show currentProfileProvider, profileRepositoryProvider, streakDataProvider;
 import 'package:moodly/features/profile/domain/profile_model.dart';
@@ -59,6 +60,40 @@ class _ProfileBody extends ConsumerStatefulWidget {
 
 class _ProfileBodyState extends ConsumerState<_ProfileBody> {
   bool _notificationsOn = true;
+
+  // ── Botón secreto de desarrollador (5 toques rápidos en el avatar) ──────────
+  int _devTaps = 0;
+  DateTime? _lastDevTap;
+
+  void _handleDevTap() {
+    final now = DateTime.now();
+    if (_lastDevTap == null ||
+        now.difference(_lastDevTap!) > const Duration(seconds: 2)) {
+      _devTaps = 1;
+    } else {
+      _devTaps++;
+    }
+    _lastDevTap = now;
+
+    if (_devTaps >= 5) {
+      _devTaps = 0;
+      ref.read(isPremiumProvider.notifier).state = true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '🔓 Modo Demo activado — Premium ON',
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: const Color(0xFF6A1B9A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -123,24 +158,27 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
               ),
               child: Column(
                 children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        width: 3,
+                  GestureDetector(
+                    onTap: _handleDevTap,
+                    child: Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          width: 3,
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _initials,
-                        style: GoogleFonts.syne(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      child: Center(
+                        child: Text(
+                          _initials,
+                          style: GoogleFonts.syne(
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -335,7 +373,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
               child: GestureDetector(
-                onTap: () => context.go('/premium'),
+                onTap: () => context.push('/premium'),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),

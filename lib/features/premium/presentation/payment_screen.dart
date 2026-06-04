@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/features/premium/application/premium_provider.dart';
 
@@ -75,8 +76,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       ),
     );
     // Salir de payment Y premium screen
-    Navigator.of(context).pop(); // payment -> premium
-    Navigator.of(context).pop(); // premium -> donde vino
+    context.pop(); // payment -> premium
+    context.pop(); // premium -> donde vino
   }
 
   @override

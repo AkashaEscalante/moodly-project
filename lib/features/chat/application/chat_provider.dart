@@ -53,27 +53,45 @@ class ChatNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
     state = AsyncValue.data([...current, userMsg, thinking]);
 
     try {
-      final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+      final apiKey = (dotenv.env['GEMINI_API_KEY'] ?? '').trim();
       if (apiKey.isEmpty) {
         _replaceThinking(current, userMsg,
-            'Lo siento, el asistente no está configurado. Por favor agrega tu GEMINI_API_KEY al archivo .env.');
+            '⚠️ GEMINI_API_KEY no está configurada en el archivo .env. Agrégala para activar a Maya.');
         return;
       }
 
-      // Initialize model + session lazily (reuse across messages for memory)
+      // Inicializa modelo de forma directa con API Key (sin OAuth / sin systemInstruction).
+      // El contexto del sistema se inyecta como primer turno del historial de conversación.
       _session ??= GenerativeModel(
         model: 'gemini-1.5-flash',
         apiKey: apiKey,
-        systemInstruction: Content.system(_systemPrompt),
-        generationConfig: GenerationConfig(maxOutputTokens: 300),
-      ).startChat();
+      ).startChat(history: [
+        Content.text(_systemPrompt),
+        Content.model([TextPart(
+          'Entendido. Soy Maya 🐱, tu asistente de bienestar emocional. '
+          'Responderé siempre en español con empatía y profesionalismo.',
+        )]),
+      ]);
 
       final response = await _session!.sendMessage(Content.text(trimmed));
-      final reply = response.text ?? 'Lo siento, no pude generar una respuesta.';
-      _replaceThinking(current, userMsg, reply.trim());
+      final reply =
+          response.text?.trim() ?? 'No pude generar una respuesta. Inténtalo de nuevo.';
+      _replaceThinking(current, userMsg, reply);
+    } on GenerativeAIException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (msg.contains('api_key') || msg.contains('api key') || msg.contains('401')) {
+        _replaceThinking(current, userMsg,
+            '🔑 API key de Gemini inválida o expirada. Verifica GEMINI_API_KEY en tu archivo .env.');
+      } else if (msg.contains('quota') || msg.contains('429')) {
+        _replaceThinking(current, userMsg,
+            '⏳ Límite de solicitudes alcanzado. Espera unos segundos e intenta de nuevo.');
+      } else {
+        _replaceThinking(current, userMsg,
+            'Maya no pudo responder: ${e.message}');
+      }
     } catch (e) {
       _replaceThinking(current, userMsg,
-          'No pude conectarme en este momento. Por favor verifica tu conexión.');
+          'No pude conectarme en este momento. Verifica tu conexión a internet e intenta de nuevo.');
     }
   }
 

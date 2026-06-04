@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:moodly/core/widgets/testimonial_card.dart';
 import 'package:moodly/features/auth/application/auth_provider.dart';
+import 'package:moodly/features/home/presentation/widgets/micro_missions_card.dart';
 import 'package:moodly/features/mood/application/mood_provider.dart';
 import 'package:moodly/features/resources/application/resources_provider.dart'
     show dailyMessageProvider;
@@ -48,6 +49,8 @@ class HomeScreen extends ConsumerWidget {
               _MotivationalBanner(isDark: isDark),
               const SizedBox(height: 20),
               _QuickMoodCard(isDark: isDark),
+              const SizedBox(height: 24),
+              const MicroMissionsCard(),
               const SizedBox(height: 24),
               _WeeklySummary(weeklyAsync: weeklyAsync, isDark: isDark),
               const SizedBox(height: 24),
