@@ -8,9 +8,15 @@ import 'package:moodly/features/mood/application/mood_entry_notifier.dart';
 import 'package:moodly/features/mood/application/mood_provider.dart';
 import 'package:moodly/features/mood/domain/activity_model.dart';
 import 'package:moodly/features/mood/domain/mood_model.dart';
+import 'package:moodly/features/diary/application/diary_provider.dart';
 import 'package:moodly/features/mood/presentation/widgets/activity_chip_list.dart';
 import 'package:moodly/features/mood/presentation/widgets/mood_selector_grid.dart';
 import 'package:moodly/features/mood/presentation/widgets/thought_input_field.dart';
+import 'package:moodly/features/premium/application/premium_provider.dart';
+import 'package:moodly/features/premium/presentation/premium_gate_modal.dart';
+
+// Provider for passing diary text from _DiarySection to _SaveButton
+final _diaryTextProvider = StateProvider<String>((ref) => '');
 
 class MoodCheckinScreen extends ConsumerWidget {
   const MoodCheckinScreen({super.key});
@@ -186,6 +192,8 @@ class _MoodCheckinContent extends ConsumerWidget {
                 ),
                 const SizedBox(height: 14),
                 const ThoughtInputField(),
+                const SizedBox(height: 28),
+                _DiarySection(isDark: isDark),
                 const SizedBox(height: 32),
               ],
             ),
@@ -374,7 +382,11 @@ class _IntensitySelectorState extends ConsumerState<_IntensitySelector> {
               onTap: () => ref
                   .read(moodEntryNotifierProvider.notifier)
                   .setIntensity(level),
-              child: AnimatedContainer(
+              child: AnimatedScale(
+                scale: selected ? 1.18 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutBack,
+                child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 width: 54,
                 height: 54,
@@ -424,7 +436,8 @@ class _IntensitySelectorState extends ConsumerState<_IntensitySelector> {
                     ),
                   ),
                 ),
-              ),
+              ),   // cierra AnimatedContainer
+              ),   // cierra AnimatedScale
             );
           }),
         ),
@@ -486,14 +499,27 @@ class _SaveButtonState extends ConsumerState<_SaveButton> {
           );
 
       ref.read(moodEntryNotifierProvider.notifier).reset();
-      ref.invalidate(moodEntriesProvider);
-      ref.invalidate(weeklyEntriesProvider);
+      ref.invalidate(moodEntriesProvider(user.id));
+      ref.invalidate(weeklyEntriesProvider(user.id));
+
+      // Also save diary entry if user wrote something
+      final diaryText = ref.read(_diaryTextProvider).trim();
+      if (diaryText.isNotEmpty) {
+        await ref.read(diaryRepositoryProvider).saveEntry(
+          userId: user.id,
+          content: diaryText,
+          moodIcon: entryState.selectedMood?.emoji,
+        );
+        ref.invalidate(gratitudeEntriesProvider(user.id));
+        ref.invalidate(todayEntryProvider(user.id));
+        ref.read(_diaryTextProvider.notifier).state = '';
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '¡Registro guardado! 🌸',
+              '¡Registro guardado! 🐱',
               style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
             ),
             backgroundColor: const Color(0xFFF48FB1),
@@ -596,6 +622,129 @@ class _SaveButtonState extends ConsumerState<_SaveButton> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Diary section ────────────────────────────────────────────────────────────
+
+class _DiarySection extends ConsumerStatefulWidget {
+  final bool isDark;
+  const _DiarySection({required this.isDark});
+
+  @override
+  ConsumerState<_DiarySection> createState() => _DiarySectionState();
+}
+
+class _DiarySectionState extends ConsumerState<_DiarySection> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPremium = ref.watch(isPremiumProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              '📔 Tu momento del día',
+              style: GoogleFonts.syne(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: widget.isDark ? Colors.white : const Color(0xFF333333),
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (!isPremium)
+              GestureDetector(
+                onTap: () => showPremiumGate(context, feature: 'Análisis de emociones con IA'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF80AB), Color(0xFF9C27B0)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '✨ Premium',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Opcional · Se guardará junto con tu emoción',
+          style: GoogleFonts.dmSans(
+            fontSize: 12,
+            color: widget.isDark
+                ? const Color(0xFF9E9E9E)
+                : const Color(0xFF999999),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: widget.isDark ? const Color(0xFF1E1E2E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: widget.isDark
+                  ? const Color(0xFF2A2A3E)
+                  : const Color(0xFFEEEEEE),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: _ctrl,
+            maxLines: 4,
+            textCapitalization: TextCapitalization.sentences,
+            onChanged: (val) =>
+                ref.read(_diaryTextProvider.notifier).state = val,
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              color: widget.isDark ? Colors.white : const Color(0xFF333333),
+              height: 1.6,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Escribe algo sobre cómo fue tu día...',
+              hintStyle: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: widget.isDark
+                    ? const Color(0xFF555566)
+                    : const Color(0xFFCCCCCC),
+              ),
+              contentPadding: const EdgeInsets.all(16),
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

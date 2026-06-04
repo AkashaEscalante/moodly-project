@@ -331,9 +331,67 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
               ),
             ),
 
-            // ─── Soporte ──────────────────────────────────────────────────────
+            // ─── Premium banner ───────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              child: GestureDetector(
+                onTap: () => context.go('/premium'),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6A1B9A), Color(0xFFAD1457)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF9C27B0).withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('🐱', style: TextStyle(fontSize: 32)),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hazte Premium',
+                              style: GoogleFonts.syne(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Chat ilimitado · Stats completas · IA análisis',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded,
+                          color: Colors.white54, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // ─── Soporte ──────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

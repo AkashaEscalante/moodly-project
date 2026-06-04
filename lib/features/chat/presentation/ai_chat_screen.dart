@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/features/chat/application/chat_provider.dart';
 import 'package:moodly/features/chat/domain/chat_message_model.dart';
+import 'package:moodly/features/premium/application/premium_provider.dart';
+import 'package:moodly/features/premium/presentation/premium_gate_modal.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
@@ -38,7 +41,16 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
+
+    final isPremium = ref.read(isPremiumProvider);
+    final count = ref.read(chatMessageCountProvider);
+    if (!isPremium && count >= kFreeChatLimit) {
+      if (mounted) showPremiumGate(context, feature: 'Chat ilimitado con Maya');
+      return;
+    }
+
     _controller.clear();
+    ref.read(chatMessageCountProvider.notifier).state = count + 1;
     setState(() => _sending = true);
     await ref.read(chatProvider.notifier).sendMessage(text);
     setState(() => _sending = false);
@@ -93,7 +105,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Text('🌸', style: TextStyle(fontSize: 18)),
+                child: Text('🐱', style: TextStyle(fontSize: 18)),
               ),
             ),
             const SizedBox(width: 10),
@@ -178,6 +190,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                         message: msg,
                         isDark: isDark,
                         isThinking: msg.content == '...',
+                        isLatest: index == messages.length - 1,
                       );
                     },
                   ),
@@ -300,11 +313,13 @@ class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isDark;
   final bool isThinking;
+  final bool isLatest;
 
   const _MessageBubble({
     required this.message,
     required this.isDark,
     required this.isThinking,
+    required this.isLatest,
   });
 
   @override
@@ -329,7 +344,7 @@ class _MessageBubble extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Text('🌸', style: TextStyle(fontSize: 14)),
+                child: Text('🐱', style: TextStyle(fontSize: 14)),
               ),
             ),
             const SizedBox(width: 8),

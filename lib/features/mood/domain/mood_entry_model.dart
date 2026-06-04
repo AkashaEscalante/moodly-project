@@ -22,8 +22,12 @@ class MoodEntryModel {
   factory MoodEntryModel.fromJson(Map<String, dynamic> json) => MoodEntryModel(
     id: json['id'] as String,
     userId: json['user_id'] as String,
-    mood: MoodModel.fromJson(json['emotion'] as Map<String, dynamic>),
-    activities: (json['activities'] as List<dynamic>?)?.cast<String>() ?? [],
+    mood: MoodModel.fromJson(json['mood'] as Map<String, dynamic>),
+    activities: (json['activities'] as List<dynamic>?)
+        ?.whereType<Map<String, dynamic>>()
+        .map((a) => (a['activity'] as Map<String, dynamic>?)?['name'] as String? ?? '')
+        .where((n) => n.isNotEmpty)
+        .toList() ?? [],
     note: json['note'] as String?,
     intensity: (json['intensity'] as int?) ?? 3,
     createdAt: DateTime.parse(json['created_at'] as String),

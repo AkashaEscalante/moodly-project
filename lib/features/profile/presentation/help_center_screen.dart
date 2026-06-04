@@ -104,8 +104,10 @@ class HelpCenterScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFFA726), Color(0xFFFF7043)],
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF2A1A45), const Color(0xFF1A0A2E)]
+                      : [const Color(0xFFFFA726), const Color(0xFFFF7043)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -185,8 +187,8 @@ class HelpCenterScreen extends StatelessWidget {
                                 decoration: const BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      Color(0xFFFFA726),
-                                      Color(0xFFFF7043),
+                                      Color(0xFF9C27B0),
+                                      Color(0xFF6A1B9A),
                                     ],
                                   ),
                                   shape: BoxShape.circle,
@@ -275,13 +277,13 @@ class HelpCenterScreen extends StatelessWidget {
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFA726)
+                                color: const Color(0xFF9C27B0)
                                     .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(
                                 Icons.question_mark_rounded,
-                                color: Color(0xFFFFA726),
+                                color: Color(0xFF9C27B0),
                                 size: 16,
                               ),
                             ),
@@ -293,7 +295,7 @@ class HelpCenterScreen extends StatelessWidget {
                                 color: textPrimary,
                               ),
                             ),
-                            iconColor: const Color(0xFFFFA726),
+                            iconColor: const Color(0xFF9C27B0),
                             collapsedIconColor: textSecondary,
                             children: [
                               Text(

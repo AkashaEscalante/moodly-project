@@ -612,7 +612,7 @@ class _EmotionCard extends StatelessWidget {
     final time = DateFormat('HH:mm').format(createdAt);
     final day = _dayLabel(createdAt);
     final hasThought =
-        entry.thought != null && (entry.thought as String).isNotEmpty;
+        entry.note != null && (entry.note as String).isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -807,7 +807,7 @@ class _MayaChatCard extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Text('🌸', style: TextStyle(fontSize: 28)),
+                child: Text('🐱', style: TextStyle(fontSize: 28)),
               ),
             ),
             const SizedBox(width: 16),

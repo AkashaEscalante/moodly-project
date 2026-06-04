@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/core/widgets/shimmer_loader.dart';
 import 'package:moodly/features/auth/application/auth_provider.dart';
+import 'package:moodly/features/premium/application/premium_provider.dart';
+import 'package:moodly/features/premium/presentation/premium_gate_modal.dart';
 import 'package:moodly/features/stats/application/stats_provider.dart';
 import 'package:moodly/features/stats/domain/mood_stats_model.dart';
 import 'package:moodly/features/stats/domain/wellness_model.dart';
@@ -71,7 +73,16 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
-          _TabSelector(selectedIndex: _tabIndex, onTap: (i) => setState(() => _tabIndex = i)),
+          _TabSelector(
+            selectedIndex: _tabIndex,
+            onTap: (i) {
+              if (i > 0 && !ref.read(isPremiumProvider)) {
+                showPremiumGate(context, feature: 'Historial completo de estadísticas');
+                return;
+              }
+              setState(() => _tabIndex = i);
+            },
+          ),
           const SizedBox(height: 24),
           Text(
             'TU PROGRESO',

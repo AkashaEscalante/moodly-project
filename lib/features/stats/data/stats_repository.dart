@@ -16,11 +16,16 @@ class StatsRepository {
   }
 
   Future<WellnessData> fetchWellnessData(String userId) async {
-    final data = await _client
-        .from('wellness_data')
-        .select()
-        .eq('user_id', userId)
-        .single();
-    return WellnessData.fromJson(data);
+    try {
+      final data = await _client
+          .from('wellness_data')
+          .select()
+          .eq('user_id', userId)
+          .maybeSingle();
+      if (data == null) return const WellnessData(sleepHours: 0, energyPct: 0, meditationMin: 0, hydrationL: 0);
+      return WellnessData.fromJson(data);
+    } catch (_) {
+      return const WellnessData(sleepHours: 0, energyPct: 0, meditationMin: 0, hydrationL: 0);
+    }
   }
 }

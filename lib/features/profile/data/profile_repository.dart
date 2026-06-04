@@ -11,7 +11,8 @@ class ProfileRepository {
         .from('profiles')
         .select()
         .eq('id', userId)
-        .single();
+        .maybeSingle();
+    if (data == null) throw Exception('Perfil no encontrado para el usuario $userId');
     return Profile.fromJson(data);
   }
 

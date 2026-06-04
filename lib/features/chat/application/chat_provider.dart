@@ -25,7 +25,7 @@ class ChatNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
       ChatMessage(
         role: 'assistant',
         content:
-            '¡Hola! Soy Maya 👋 Tu asistente de bienestar emocional. ¿Cómo te has sentido hoy?',
+            '¡Hola! Soy Maya 🐱 Tu asistente de bienestar emocional. ¿Cómo te has sentido hoy?',
         timestamp: DateTime.now(),
       ),
     ]);

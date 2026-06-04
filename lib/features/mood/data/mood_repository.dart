@@ -40,7 +40,7 @@ class MoodRepository {
         .insert({
           'user_id': userId,
           'emotion_id': moodId,
-          'thought': thought,
+          'note': thought,
           'intensity': intensity,
         })
         .select()

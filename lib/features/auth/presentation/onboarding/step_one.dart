@@ -37,7 +37,7 @@ class StepOne extends StatelessWidget {
                   ],
                 ),
                 child: const Center(
-                  child: Text('🌸', style: TextStyle(fontSize: 64)),
+                  child: Text('🐱', style: TextStyle(fontSize: 64)),
                 ),
               ),
               const SizedBox(height: 48),
