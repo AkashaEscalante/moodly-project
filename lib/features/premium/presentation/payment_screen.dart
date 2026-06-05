@@ -104,7 +104,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   child: Row(
                     children: [
                       GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
+                        onTap: () => context.canPop() ? context.pop() : context.go('/premium'),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(

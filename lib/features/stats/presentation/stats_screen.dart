@@ -137,24 +137,26 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                   label: 'FRECUENTE',
                   value: stats.mostFrequentMood,
                   icon: '😊',
-                  bgColor: const Color(0xFFE8F5E8),
+                  bgColor: isDark ? const Color(0xFF0D2D1A) : const Color(0xFFE8F5E8),
                   accentColor: const Color(0xFF4CAF50),
+                  isDark: isDark,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: _InsightCard(
                   label: 'AMOR PROPIO',
                   value: 'Alto',
                   icon: '❤️',
-                  bgColor: Color(0xFFFFF0E8),
-                  accentColor: Color(0xFFFF7043),
+                  bgColor: isDark ? const Color(0xFF2D1508) : const Color(0xFFFFF0E8),
+                  accentColor: const Color(0xFFFF7043),
+                  isDark: isDark,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          _StreakCard(streak: stats.streak),
+          _StreakCard(streak: stats.streak, isDark: isDark),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -236,10 +238,11 @@ class _TabSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: isDark ? const Color(0xFF1E1E2E) : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
@@ -252,12 +255,14 @@ class _TabSelector extends StatelessWidget {
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: selected ? Colors.white : Colors.transparent,
+                  color: selected
+                      ? (isDark ? const Color(0xFF2A1040) : Colors.white)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: selected
                       ? [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
+                            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -270,7 +275,9 @@ class _TabSelector extends StatelessWidget {
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected ? const Color(0xFF333333) : const Color(0xFF999999),
+                      color: selected
+                          ? (isDark ? Colors.white : const Color(0xFF333333))
+                          : const Color(0xFF999999),
                     ),
                   ),
                 ),
@@ -299,13 +306,17 @@ class _MoodBarChart extends StatelessWidget {
       return 3.0;
     });
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 160,
       padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF0F0F0), width: 1.5),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF0F0F0),
+          width: 1.5,
+        ),
       ),
       child: BarChart(
         BarChartData(
@@ -376,6 +387,7 @@ class _InsightCard extends StatelessWidget {
   final String icon;
   final Color bgColor;
   final Color accentColor;
+  final bool isDark;
 
   const _InsightCard({
     required this.label,
@@ -383,6 +395,7 @@ class _InsightCard extends StatelessWidget {
     required this.icon,
     required this.bgColor,
     required this.accentColor,
+    required this.isDark,
   });
 
   @override
@@ -392,6 +405,9 @@ class _InsightCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
+        border: isDark
+            ? Border.all(color: accentColor.withValues(alpha: 0.2), width: 1)
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,16 +440,25 @@ class _InsightCard extends StatelessWidget {
 
 class _StreakCard extends StatelessWidget {
   final int streak;
-  const _StreakCard({required this.streak});
+  final bool isDark;
+  const _StreakCard({required this.streak, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
+    final bg = isDark ? const Color(0xFF1F1A00) : const Color(0xFFFFFDE7);
+    final labelColor = isDark ? const Color(0xFFFFCA28) : const Color(0xFFAA8800);
+    final valueColor = isDark ? Colors.white : const Color(0xFF795548);
+    final progressBg = isDark ? const Color(0xFF2A2A3E) : const Color(0xFFE0E0E0);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFDE7),
+        color: bg,
         borderRadius: BorderRadius.circular(20),
+        border: isDark
+            ? Border.all(color: const Color(0xFFFFC107).withValues(alpha: 0.2))
+            : null,
       ),
       child: Row(
         children: [
@@ -448,27 +473,28 @@ class _StreakCard extends StatelessWidget {
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFAA8800),
+                    color: labelColor,
                     letterSpacing: 1,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '¡$streak días radiantes!',
+                  streak > 0 ? '¡$streak días radiantes!' : 'Empieza tu racha hoy',
                   style: GoogleFonts.syne(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF795548),
+                    color: valueColor,
                   ),
                 ),
                 const SizedBox(height: 6),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
-                    value: (streak % 7) / 7,
+                    value: streak == 0 ? 0.0 : (streak % 7) / 7,
                     minHeight: 5,
-                    backgroundColor: const Color(0xFFE0E0E0),
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFFFFC107)),
+                    backgroundColor: progressBg,
+                    valueColor:
+                        const AlwaysStoppedAnimation(Color(0xFFFFC107)),
                   ),
                 ),
               ],
@@ -495,12 +521,17 @@ class _WellnessCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final border = isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF0F0F0);
+    final valueColor = isDark ? Colors.white : const Color(0xFF222222);
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF0F0F0), width: 1.5),
+        border: Border.all(color: border, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,7 +543,7 @@ class _WellnessCard extends StatelessWidget {
             style: GoogleFonts.dmSans(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: color.withValues(alpha: 0.6),
+              color: color.withValues(alpha: 0.7),
               letterSpacing: 1,
             ),
           ),
@@ -522,7 +553,7 @@ class _WellnessCard extends StatelessWidget {
             style: GoogleFonts.syne(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF222222),
+              color: valueColor,
             ),
           ),
         ],
@@ -540,12 +571,17 @@ class _FactorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final border = isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF0F0F0);
+    final labelColor = isDark ? Colors.white : const Color(0xFF333333);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF0F0F0), width: 1.5),
+        border: Border.all(color: border, width: 1.5),
       ),
       child: Row(
         children: [
@@ -557,7 +593,7 @@ class _FactorRow extends StatelessWidget {
               style: GoogleFonts.dmSans(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF333333),
+                color: labelColor,
               ),
             ),
           ),

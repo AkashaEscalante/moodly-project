@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class HelpCenterScreen extends StatelessWidget {
@@ -71,7 +72,7 @@ class HelpCenterScreen extends StatelessWidget {
         backgroundColor: bg,
         elevation: 0,
         leading: GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
+          onTap: () => context.canPop() ? context.pop() : context.go('/profile'),
           child: Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(

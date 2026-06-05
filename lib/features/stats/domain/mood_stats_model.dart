@@ -15,6 +15,12 @@ class MoodStats {
     weekData: (json['week_data'] as List<dynamic>).cast<Map<String, dynamic>>(),
   );
 
+  factory MoodStats.empty() => const MoodStats(
+    mostFrequentMood: 'Sin datos',
+    streak: 0,
+    weekData: [],
+  );
+
   Map<String, dynamic> toJson() => {
     'most_frequent_mood': mostFrequentMood,
     'streak': streak,

@@ -11,9 +11,13 @@ class ActivityChipList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final selectedActivities = ref.watch(moodEntryNotifierProvider).selectedActivities;
-
     final displayActivities = activities.isNotEmpty ? activities : _defaultActivities;
+
+    final unselectedBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final unselectedBorder = isDark ? const Color(0xFF2A2A3E) : const Color(0xFFE8E8E8);
+    final unselectedText = isDark ? const Color(0xFFCCCCCC) : const Color(0xFF555555);
 
     return Wrap(
       spacing: 10,
@@ -29,17 +33,17 @@ class ActivityChipList extends ConsumerWidget {
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFF4A0C0) : Colors.white,
+              color: isSelected ? const Color(0xFFF4A0C0) : unselectedBg,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: isSelected ? const Color(0xFFF4A0C0) : const Color(0xFFE8E8E8),
+                color: isSelected ? const Color(0xFFF4A0C0) : unselectedBorder,
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
                   color: isSelected
                       ? const Color(0xFFF4A0C0).withValues(alpha: 0.3)
-                      : Colors.black.withValues(alpha: 0.04),
+                      : Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
                   blurRadius: isSelected ? 10 : 6,
                   offset: const Offset(0, 2),
                 ),
@@ -55,7 +59,7 @@ class ActivityChipList extends ConsumerWidget {
                   style: GoogleFonts.dmSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : const Color(0xFF555555),
+                    color: isSelected ? Colors.white : unselectedText,
                   ),
                 ),
               ],

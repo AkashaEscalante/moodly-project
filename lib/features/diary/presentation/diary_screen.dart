@@ -19,7 +19,6 @@ class _DiaryScreenState extends ConsumerState<DiaryScreen> {
   final _controller = TextEditingController();
   String? _selectedEmoji;
   bool _saving = false;
-  bool _initialized = false;
 
   static const _moods = [
     ('😊', 'Feliz'),
@@ -92,17 +91,9 @@ class _DiaryScreenState extends ConsumerState<DiaryScreen> {
     String userId,
     bool isDark,
   ) {
-    if (!_initialized && today != null) {
-      _controller.text = today.content;
-      _selectedEmoji = today.moodIcon;
-      _initialized = true;
-    }
-
-    // Filter out today's entry from the past entries list
-    final pastEntries = entries.where((e) {
-      final todayStr = DateTime.now().toIso8601String().split('T')[0];
-      return e.entryDate.toIso8601String().split('T')[0] != todayStr;
-    }).toList();
+    // Show all entries (newest first) — the writing card always creates a new one
+    final pastEntries = List.of(entries)
+      ..sort((a, b) => b.entryDate.compareTo(a.entryDate));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -114,10 +105,9 @@ class _DiaryScreenState extends ConsumerState<DiaryScreen> {
             controller: _controller,
             selectedEmoji: _selectedEmoji,
             saving: _saving,
-            existingEntry: today,
             moods: _moods,
             onEmojiSelected: (e) => setState(() => _selectedEmoji = e),
-            onSave: () => _save(userId, today),
+            onSave: () => _save(userId),
           ),
           const SizedBox(height: 28),
           Row(
@@ -215,7 +205,7 @@ class _DiaryScreenState extends ConsumerState<DiaryScreen> {
     }
   }
 
-  Future<void> _save(String userId, GratitudeEntry? existing) async {
+  Future<void> _save(String userId) async {
     final text = _controller.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -236,11 +226,12 @@ class _DiaryScreenState extends ConsumerState<DiaryScreen> {
         userId: userId,
         content: text,
         moodIcon: _selectedEmoji,
-        existingId: existing?.id,
+        existingId: null,
       );
+      _controller.clear();
+      setState(() => _selectedEmoji = null);
       ref.invalidate(gratitudeEntriesProvider(userId));
       ref.invalidate(todayEntryProvider(userId));
-      setState(() => _initialized = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('¡Entrada guardada 📖',
@@ -274,7 +265,6 @@ class _WritingCard extends StatelessWidget {
   final TextEditingController controller;
   final String? selectedEmoji;
   final bool saving;
-  final GratitudeEntry? existingEntry;
   final List<(String, String)> moods;
   final ValueChanged<String> onEmojiSelected;
   final VoidCallback onSave;
@@ -284,7 +274,6 @@ class _WritingCard extends StatelessWidget {
     required this.controller,
     required this.selectedEmoji,
     required this.saving,
-    required this.existingEntry,
     required this.moods,
     required this.onEmojiSelected,
     required this.onSave,
@@ -322,7 +311,7 @@ class _WritingCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  existingEntry != null ? 'Editando hoy' : 'Nueva entrada',
+                  'Nueva entrada',
                   style: GoogleFonts.dmSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -442,7 +431,7 @@ class _WritingCard extends StatelessWidget {
                         ),
                       )
                     : Text(
-                        existingEntry != null ? 'ACTUALIZAR' : 'GUARDAR',
+                        'GUARDAR',
                         style: GoogleFonts.dmSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
