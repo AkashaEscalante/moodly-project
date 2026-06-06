@@ -43,10 +43,23 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
 
+    final isPremium = ref.read(isPremiumProvider);
+    final limitNotifier = ref.read(dailyLimitProvider.notifier);
+
+    // Guardia: no enviar si ya se agotó el límite
+    if (!isPremium && limitNotifier.hasReachedLimit) return;
+
     _controller.clear();
     setState(() => _sending = true);
+
     await ref.read(chatProvider.notifier).sendMessage(text);
-    setState(() => _sending = false);
+
+    // Incrementar contador DESPUÉS de la respuesta exitosa
+    if (!isPremium) {
+      limitNotifier.increment();
+    }
+
+    if (mounted) setState(() => _sending = false);
     _scrollToBottom();
   }
 
@@ -54,19 +67,30 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isPremium = ref.watch(isPremiumProvider);
+    final limitState = ref.watch(dailyLimitProvider);
     final messagesAsync = ref.watch(chatProvider);
     final messages = messagesAsync.valueOrNull ?? [];
+
+    // Calcular límite directamente desde el estado observado (dispara rebuild)
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    final todayCount = limitState.date == todayStr ? limitState.count : 0;
+    final isLimitReached = !isPremium && todayCount >= kFreeChatLimit;
+    final remaining = isPremium
+        ? kFreeChatLimit
+        : (kFreeChatLimit - todayCount).clamp(0, kFreeChatLimit);
 
     if (messages.isNotEmpty) _scrollToBottom();
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF8F5FF),
       appBar: _buildAppBar(isDark),
-      body: isPremium
-          ? _buildChatBody(isDark, messages)
-          : _buildPremiumLockedBody(isDark),
+      body: isLimitReached
+          ? _buildLimitReachedBody(isDark)
+          : _buildChatBody(isDark, messages, isPremium, remaining),
     );
   }
+
+  // ─── AppBar ────────────────────────────────────────────────────────────────
 
   AppBar _buildAppBar(bool isDark) {
     return AppBar(
@@ -148,15 +172,26 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
-  // ─── Chat normal (usuario premium) ────────────────────────────────────────
+  // ─── Chat normal (con/sin límite) ──────────────────────────────────────────
 
-  Widget _buildChatBody(bool isDark, List<ChatMessage> messages) {
+  Widget _buildChatBody(
+    bool isDark,
+    List<ChatMessage> messages,
+    bool isPremium,
+    int remaining,
+  ) {
     return Column(
       children: [
         _DisclaimerBanner(isDark: isDark),
+        // Contador de mensajes para usuarios free
+        if (!isPremium)
+          _DailyCountBanner(
+            remaining: remaining,
+            isDark: isDark,
+          ),
         Expanded(
           child: messages.isEmpty
-              ? const SizedBox.shrink()
+              ? _WelcomeHint(isDark: isDark)
               : ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -182,18 +217,18 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
-  // ─── Vista bloqueada (usuario no premium) ─────────────────────────────────
+  // ─── Vista cuando se agotó el límite diario ────────────────────────────────
 
-  Widget _buildPremiumLockedBody(bool isDark) {
+  Widget _buildLimitReachedBody(bool isDark) {
     return Column(
       children: [
         _DisclaimerBanner(isDark: isDark),
         Expanded(
           child: Stack(
             children: [
-              // Mensajes de previsualización (borrosos)
-              _LockedChatPreview(isDark: isDark),
-              // Superposición con fade hacia el bloqueo
+              // Preview borrosa de los mensajes actuales
+              _BlurredMessagesPreview(isDark: isDark),
+              // Degradado de fade hacia el bloqueo
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -202,19 +237,23 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        (isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF8F5FF))
-                            .withValues(alpha: 0.85),
-                        isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF8F5FF),
+                        (isDark
+                                ? const Color(0xFF0D0D1A)
+                                : const Color(0xFFF8F5FF))
+                            .withValues(alpha: 0.8),
+                        isDark
+                            ? const Color(0xFF0D0D1A)
+                            : const Color(0xFFF8F5FF),
                       ],
-                      stops: const [0.0, 0.55, 1.0],
+                      stops: const [0.0, 0.5, 1.0],
                     ),
                   ),
                 ),
               ),
-              // Tarjeta de bloqueo
+              // Tarjeta de paywall
               Align(
-                alignment: const Alignment(0, 0.25),
-                child: _PremiumLockCard(
+                alignment: const Alignment(0, 0.2),
+                child: _PaywallCard(
                   isDark: isDark,
                   onTap: () => context.push('/premium'),
                 ),
@@ -228,7 +267,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 }
 
-// ─── Banner disclaimer ────────────────────────────────────────────────────────
+// ─── Banner de disclaimer ─────────────────────────────────────────────────────
 
 class _DisclaimerBanner extends StatelessWidget {
   final bool isDark;
@@ -242,9 +281,8 @@ class _DisclaimerBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF9C27B0).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF9C27B0).withValues(alpha: 0.2),
-        ),
+        border:
+            Border.all(color: const Color(0xFF9C27B0).withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -254,9 +292,65 @@ class _DisclaimerBanner extends StatelessWidget {
           Expanded(
             child: Text(
               'Maya no reemplaza a un profesional de salud mental.',
-              style: GoogleFonts.dmSans(
-                fontSize: 11,
-                color: const Color(0xFF9C27B0),
+              style:
+                  GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF9C27B0)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Contador de mensajes restantes (plan Gratis) ─────────────────────────────
+
+class _DailyCountBanner extends StatelessWidget {
+  final int remaining;
+  final bool isDark;
+  const _DailyCountBanner({required this.remaining, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final isLow = remaining <= 1;
+    final accent =
+        isLow ? const Color(0xFFFF7043) : const Color(0xFF9C27B0);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isLow ? Icons.warning_amber_rounded : Icons.chat_bubble_outline_rounded,
+            color: accent,
+            size: 14,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: GoogleFonts.dmSans(fontSize: 11, color: accent),
+                children: [
+                  TextSpan(
+                    text: 'Plan Gratis — ',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  TextSpan(
+                    text: remaining > 0
+                        ? 'te quedan $remaining mensaje${remaining == 1 ? '' : 's'} hoy'
+                        : '¡Has usado todos tus mensajes de hoy!',
+                  ),
+                  if (remaining > 0)
+                    TextSpan(
+                      text: '  ·  Actualiza a Premium para mensajes ilimitados',
+                      style: TextStyle(color: accent.withValues(alpha: 0.7)),
+                    ),
+                ],
               ),
             ),
           ),
@@ -266,106 +360,174 @@ class _DisclaimerBanner extends StatelessWidget {
   }
 }
 
-// ─── Previsualización borrosa (no premium) ────────────────────────────────────
+// ─── Hint de bienvenida cuando no hay mensajes ────────────────────────────────
 
-class _LockedChatPreview extends StatelessWidget {
+class _WelcomeHint extends StatelessWidget {
   final bool isDark;
-  static const _sample = [
-    (true, '¿Cómo puedo manejar la ansiedad antes de un examen?'),
-    (false, 'Entiendo cómo te sientes. La ansiedad antes de los exámenes es muy común. Primero, respira profundo: inhala por 4 segundos, sostén 4 y exhala 4. Esto activa tu sistema nervioso parasimpático. 🌿'),
-    (true, 'Gracias, eso me ayuda mucho. ¿Qué más puedo hacer?'),
-    (false, 'También te recomiendo dividir tu estudio en bloques de 25 min con descansos de 5 — la técnica Pomodoro. Tu cerebro retiene mejor así, y la presión se reduce. ¿Quieres que te ayude con un plan?'),
-  ];
-
-  const _LockedChatPreview({required this.isDark});
+  const _WelcomeHint({required this.isDark});
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          physics: const NeverScrollableScrollPhysics(),
-          children: _sample.map((item) {
-            final isUser = item.$1;
-            final text = item.$2;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Row(
-                mainAxisAlignment: isUser
-                    ? MainAxisAlignment.end
-                    : MainAxisAlignment.start,
-                children: [
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        gradient: isUser
-                            ? const LinearGradient(
-                                colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
-                              )
-                            : null,
-                        color: isUser
-                            ? null
-                            : (isDark
-                                ? const Color(0xFF1E1E2E)
-                                : Colors.white),
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(20),
-                          topRight: const Radius.circular(20),
-                          bottomLeft: Radius.circular(isUser ? 20 : 4),
-                          bottomRight: Radius.circular(isUser ? 4 : 20),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black
-                                .withValues(alpha: isDark ? 0.2 : 0.07),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        text,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
-                          color: isUser
-                              ? Colors.white
-                              : (isDark
-                                  ? Colors.white
-                                  : const Color(0xFF333333)),
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFFF80AB), Color(0xFF9C27B0)],
+                ),
+                shape: BoxShape.circle,
               ),
-            );
-          }).toList(),
+              child: const Center(
+                child: Text('🐱', style: TextStyle(fontSize: 32)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '¡Hola! Soy Maya 💜',
+              style: GoogleFonts.syne(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : const Color(0xFF333333),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Estoy aquí para escucharte.\nCuéntame, ¿cómo te sientes hoy?',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: isDark ? Colors.white54 : const Color(0xFF888888),
+                height: 1.5,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ─── Tarjeta de bloqueo premium ───────────────────────────────────────────────
+// ─── Preview borrosa cuando se agotó el límite ────────────────────────────────
 
-class _PremiumLockCard extends StatelessWidget {
+class _BlurredMessagesPreview extends ConsumerWidget {
   final bool isDark;
-  final VoidCallback onTap;
-  const _PremiumLockCard({required this.isDark, required this.onTap});
+
+  static const _sample = [
+    (true, '¿Cómo puedo manejar mejor el estrés?'),
+    (false,
+        'Entiendo que el estrés puede ser agotador. Una técnica que ayuda mucho es la respiración 4-7-8: inhala 4 seg, sostén 7 y exhala 8. Reduce el cortisol inmediatamente. 🌿'),
+    (true, '¿Y si no puedo dormir por la ansiedad?'),
+    (false,
+        'La ansiedad nocturna es muy común. Prueba escribir en un diario todo lo que te preocupa antes de dormir — vaciar la mente en papel le dice al cerebro que puede soltar el control. 💜'),
+  ];
+
+  const _BlurredMessagesPreview({required this.isDark});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Muestra los mensajes reales si los hay, de lo contrario, los de muestra
+    final messages = ref.watch(chatProvider).valueOrNull ?? [];
+    final displayMessages = messages.isNotEmpty ? messages : null;
+
+    return ClipRect(
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          physics: const NeverScrollableScrollPhysics(),
+          children: displayMessages != null
+              ? displayMessages.map((msg) => _SimpleBubble(
+                    text: msg.content,
+                    isUser: msg.isUser,
+                    isDark: isDark,
+                  )).toList()
+              : _sample.map((s) => _SimpleBubble(
+                    text: s.$2,
+                    isUser: s.$1,
+                    isDark: isDark,
+                  )).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _SimpleBubble extends StatelessWidget {
+  final String text;
+  final bool isUser;
+  final bool isDark;
+  const _SimpleBubble(
+      {required this.text, required this.isUser, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          Flexible(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: isUser
+                    ? const LinearGradient(
+                        colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
+                      )
+                    : null,
+                color: isUser
+                    ? null
+                    : (isDark ? const Color(0xFF1E1E2E) : Colors.white),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(isUser ? 20 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 20),
+                ),
+              ),
+              child: Text(
+                text,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: isUser
+                      ? Colors.white
+                      : (isDark ? Colors.white : const Color(0xFF333333)),
+                  height: 1.5,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Tarjeta de Paywall (límite alcanzado) ────────────────────────────────────
+
+class _PaywallCard extends StatelessWidget {
+  final bool isDark;
+  final VoidCallback onTap;
+  const _PaywallCard({required this.isDark, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
             decoration: BoxDecoration(
@@ -374,97 +536,87 @@ class _PremiumLockCard extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: isDark
                     ? [
-                        const Color(0xFF2A1040).withValues(alpha: 0.95),
-                        const Color(0xFF1A0A2E).withValues(alpha: 0.95),
+                        const Color(0xFF2A1040).withValues(alpha: 0.96),
+                        const Color(0xFF1A0A2E).withValues(alpha: 0.96),
                       ]
                     : [
-                        Colors.white.withValues(alpha: 0.92),
-                        const Color(0xFFF3E5F5).withValues(alpha: 0.92),
+                        Colors.white.withValues(alpha: 0.94),
+                        const Color(0xFFF3E5F5).withValues(alpha: 0.94),
                       ],
               ),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: const Color(0xFF9C27B0).withValues(alpha: 0.35),
+                color: const Color(0xFF9C27B0).withValues(alpha: 0.4),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF9C27B0).withValues(alpha: 0.25),
-                  blurRadius: 32,
-                  offset: const Offset(0, 8),
+                  color: const Color(0xFF9C27B0).withValues(alpha: 0.3),
+                  blurRadius: 36,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Ícono de bloqueo con gradiente
+                // Ícono
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFFF80AB), Color(0xFF9C27B0)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                      colors: [Color(0xFFFF7043), Color(0xFF9C27B0)],
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF9C27B0).withValues(alpha: 0.4),
-                        blurRadius: 20,
+                        color: const Color(0xFF9C27B0).withValues(alpha: 0.45),
+                        blurRadius: 22,
                         offset: const Offset(0, 6),
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.lock_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
+                  child: const Icon(Icons.star_rounded,
+                      color: Colors.white, size: 28),
                 )
                     .animate()
-                    .fadeIn(duration: 400.ms)
-                    .scale(begin: const Offset(0.7, 0.7), duration: 400.ms, curve: Curves.easeOutBack),
-                const SizedBox(height: 18),
+                    .fadeIn(duration: 350.ms)
+                    .scale(
+                      begin: const Offset(0.7, 0.7),
+                      duration: 350.ms,
+                      curve: Curves.easeOutBack,
+                    ),
+                const SizedBox(height: 16),
+
+                // Título
                 Text(
-                  'Desbloquea a Maya',
+                  '¡$kFreeChatLimit mensajes usados hoy!',
                   style: GoogleFonts.syne(
-                    fontSize: 22,
+                    fontSize: 19,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : const Color(0xFF222222),
                   ),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'El chat con tu asistente de bienestar\nes una función exclusiva de Premium.',
+                  'El plan Gratis incluye $kFreeChatLimit mensajes diarios con Maya.\nPasa a Premium y chatea sin límites.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.dmSans(
                     fontSize: 13,
-                    color: isDark ? Colors.white54 : const Color(0xFF777777),
+                    color: isDark ? Colors.white54 : const Color(0xFF666666),
                     height: 1.5,
                   ),
                 ),
                 const SizedBox(height: 20),
-                // Beneficios
-                _LockBenefit(
-                  emoji: '💬',
-                  text: 'Chat ilimitado con Maya',
-                  isDark: isDark,
-                ),
-                const SizedBox(height: 8),
-                _LockBenefit(
-                  emoji: '🧠',
-                  text: 'Análisis emocional con IA',
-                  isDark: isDark,
-                ),
-                const SizedBox(height: 8),
-                _LockBenefit(
-                  emoji: '💜',
-                  text: 'Respuestas personalizadas',
-                  isDark: isDark,
-                ),
-                const SizedBox(height: 24),
+
+                // Métodos de pago (visual mockup)
+                _PaymentMethodsPreview(isDark: isDark),
+
+                const SizedBox(height: 22),
+
+                // CTA principal
                 GestureDetector(
                   onTap: onTap,
                   child: Container(
@@ -479,7 +631,7 @@ class _PremiumLockCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF9C27B0).withValues(alpha: 0.4),
+                          color: const Color(0xFF9C27B0).withValues(alpha: 0.42),
                           blurRadius: 18,
                           offset: const Offset(0, 6),
                         ),
@@ -492,9 +644,16 @@ class _PremiumLockCard extends StatelessWidget {
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        letterSpacing: 0.3,
                       ),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'El límite se reinicia mañana a medianoche',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    color: isDark ? Colors.white30 : const Color(0xFFAAAAAA),
                   ),
                 ),
               ],
@@ -506,42 +665,145 @@ class _PremiumLockCard extends StatelessWidget {
   }
 }
 
-class _LockBenefit extends StatelessWidget {
-  final String emoji;
-  final String text;
+// ─── Visual de métodos de pago ────────────────────────────────────────────────
+
+class _PaymentMethodsPreview extends StatelessWidget {
   final bool isDark;
-  const _LockBenefit({required this.emoji, required this.text, required this.isDark});
+  const _PaymentMethodsPreview({required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: const Color(0xFF9C27B0).withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(emoji, style: const TextStyle(fontSize: 15)),
+        Expanded(
+          child: _PayChip(
+            icon: Icons.credit_card_rounded,
+            label: 'Tarjeta',
+            subtitle: 'Crédito / Débito',
+            isDark: isDark,
           ),
         ),
-        const SizedBox(width: 12),
-        Text(
-          text,
-          style: GoogleFonts.dmSans(
-            fontSize: 13,
-            color: isDark ? Colors.white70 : const Color(0xFF444444),
-            fontWeight: FontWeight.w500,
-          ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _OxxoChip(isDark: isDark),
         ),
       ],
     );
   }
 }
 
-// ─── Input bar bloqueada ──────────────────────────────────────────────────────
+class _PayChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final bool isDark;
+  const _PayChip({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDark ? const Color(0xFF1E1E2E) : const Color(0xFFF5F0FF);
+    final border = isDark ? const Color(0xFF3A2A5E) : const Color(0xFFD9C8F5);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF9C27B0), size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: GoogleFonts.syne(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF333333),
+                    )),
+                Text(subtitle,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: isDark ? Colors.white38 : const Color(0xFF888888),
+                    )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OxxoChip extends StatelessWidget {
+  final bool isDark;
+  const _OxxoChip({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDark ? const Color(0xFF1E1E2E) : const Color(0xFFFFF8E1);
+    final border = isDark ? const Color(0xFF3A2E10) : const Color(0xFFFFE082);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE53935),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Center(
+              child: Text('O',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  )),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('OXXO',
+                    style: GoogleFonts.syne(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF333333),
+                    )),
+                Text('Pago en efectivo',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: isDark ? Colors.white38 : const Color(0xFF888888),
+                    )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Barra de input bloqueada ──────────────────────────────────────────────────
 
 class _LockedInputBar extends StatelessWidget {
   final bool isDark;
@@ -555,7 +817,8 @@ class _LockedInputBar extends StatelessWidget {
         color: isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF8F5FF),
         border: Border(
           top: BorderSide(
-            color: isDark ? const Color(0xFF1E1E2E) : const Color(0xFFEEEEEE),
+            color:
+                isDark ? const Color(0xFF1E1E2E) : const Color(0xFFEEEEEE),
           ),
         ),
       ),
@@ -563,10 +826,11 @@ class _LockedInputBar extends StatelessWidget {
         children: [
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
                 color: isDark
-                    ? const Color(0xFF1E1E2E)
+                    ? const Color(0xFF1A1A2E)
                     : const Color(0xFFEEEEEE),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
@@ -577,16 +841,14 @@ class _LockedInputBar extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.lock_rounded,
-                    size: 16,
-                    color: isDark ? Colors.white24 : const Color(0xFFBBBBBB),
-                  ),
+                  Icon(Icons.lock_rounded,
+                      size: 15,
+                      color: isDark ? Colors.white24 : const Color(0xFFBBBBBB)),
                   const SizedBox(width: 8),
                   Text(
-                    'Función Premium — desbloquea para chatear',
+                    'Límite diario alcanzado — actualiza a Premium',
                     style: GoogleFonts.dmSans(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: isDark
                           ? const Color(0xFF444455)
                           : const Color(0xFFBBBBBB),
@@ -601,14 +863,13 @@ class _LockedInputBar extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E2E) : const Color(0xFFEEEEEE),
+              color:
+                  isDark ? const Color(0xFF1E1E2E) : const Color(0xFFEEEEEE),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.send_rounded,
-              color: isDark ? Colors.white12 : const Color(0xFFCCCCCC),
-              size: 20,
-            ),
+            child: Icon(Icons.send_rounded,
+                color: isDark ? Colors.white12 : const Color(0xFFCCCCCC),
+                size: 20),
           ),
         ],
       ),
@@ -616,7 +877,7 @@ class _LockedInputBar extends StatelessWidget {
   }
 }
 
-// ─── Input bar activa (premium) ───────────────────────────────────────────────
+// ─── Barra de input activa ────────────────────────────────────────────────────
 
 class _InputBar extends StatelessWidget {
   final bool isDark;
@@ -639,9 +900,8 @@ class _InputBar extends StatelessWidget {
         color: isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF8F5FF),
         border: Border(
           top: BorderSide(
-            color: isDark
-                ? const Color(0xFF1E1E2E)
-                : const Color(0xFFEEEEEE),
+            color:
+                isDark ? const Color(0xFF1E1E2E) : const Color(0xFFEEEEEE),
           ),
         ),
       ),
@@ -674,7 +934,7 @@ class _InputBar extends StatelessWidget {
                   color: isDark ? Colors.white : const Color(0xFF333333),
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Escribe tu mensaje...',
+                  hintText: 'Escríbele a Maya...',
                   hintStyle: GoogleFonts.dmSans(
                     fontSize: 14,
                     color: isDark
@@ -712,8 +972,7 @@ class _InputBar extends StatelessWidget {
                     ? []
                     : [
                         BoxShadow(
-                          color: const Color(0xFF9C27B0)
-                              .withValues(alpha: 0.35),
+                          color: const Color(0xFF9C27B0).withValues(alpha: 0.35),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -727,11 +986,8 @@ class _InputBar extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(
-                      Icons.send_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                  : const Icon(Icons.send_rounded,
+                      color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -768,7 +1024,8 @@ class _MessageBubble extends StatelessWidget {
         children: [
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 gradient: isUser
                     ? const LinearGradient(
@@ -788,7 +1045,8 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.07),
+                    color: Colors.black
+                        .withValues(alpha: isDark ? 0.2 : 0.07),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -802,9 +1060,7 @@ class _MessageBubble extends StatelessWidget {
                         fontSize: 14,
                         color: isUser
                             ? Colors.white
-                            : (isDark
-                                ? Colors.white
-                                : const Color(0xFF333333)),
+                            : (isDark ? Colors.white : const Color(0xFF333333)),
                         height: 1.5,
                       ),
                     ),
@@ -856,30 +1112,28 @@ class _ThinkingDotsState extends State<_ThinkingDots>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, _) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (i) {
-            final delay = i / 3;
-            final t = (_anim.value - delay).clamp(0.0, 1.0);
-            final opacity = (t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.3, 1.0);
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: Opacity(
-                opacity: opacity,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFCE93D8),
-                    shape: BoxShape.circle,
-                  ),
+      builder: (_, _) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(3, (i) {
+          final delay = i / 3;
+          final t = (_anim.value - delay).clamp(0.0, 1.0);
+          final opacity = (t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.3, 1.0);
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Opacity(
+              opacity: opacity,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFCE93D8),
+                  shape: BoxShape.circle,
                 ),
               ),
-            );
-          }),
-        );
-      },
+            ),
+          );
+        }),
+      ),
     );
   }
 }

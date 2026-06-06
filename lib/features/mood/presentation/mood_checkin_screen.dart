@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:moodly/core/widgets/shimmer_loader.dart';
-import 'package:moodly/features/auth/application/auth_provider.dart';
 import 'package:moodly/features/mood/application/mood_entry_notifier.dart';
 import 'package:moodly/features/mood/application/mood_provider.dart';
 import 'package:moodly/features/mood/domain/activity_model.dart';
@@ -480,8 +480,28 @@ class _SaveButtonState extends ConsumerState<_SaveButton> {
       return;
     }
 
-    final user = ref.read(authStateProvider).valueOrNull;
-    if (user == null) return;
+    // Usamos Supabase directamente — authStateProvider.valueOrNull puede ser
+    // null si el Future aún no resolvió, causando un return silencioso.
+    final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    if (userId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Debes iniciar sesión para guardar tu registro.',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() => _loading = true);
 
@@ -489,7 +509,7 @@ class _SaveButtonState extends ConsumerState<_SaveButton> {
       await ref
           .read(moodRepositoryProvider)
           .saveMoodEntry(
-            userId: user.id,
+            userId: userId,
             moodId: entryState.selectedMood!.id,
             thought: entryState.thought,
             activityIds: entryState.selectedActivities
@@ -499,19 +519,19 @@ class _SaveButtonState extends ConsumerState<_SaveButton> {
           );
 
       ref.read(moodEntryNotifierProvider.notifier).reset();
-      ref.invalidate(moodEntriesProvider(user.id));
-      ref.invalidate(weeklyEntriesProvider(user.id));
+      ref.invalidate(moodEntriesProvider(userId));
+      ref.invalidate(weeklyEntriesProvider(userId));
 
       // Also save diary entry if user wrote something
       final diaryText = ref.read(_diaryTextProvider).trim();
       if (diaryText.isNotEmpty) {
         await ref.read(diaryRepositoryProvider).saveEntry(
-          userId: user.id,
+          userId: userId,
           content: diaryText,
           moodIcon: entryState.selectedMood?.emoji,
         );
-        ref.invalidate(gratitudeEntriesProvider(user.id));
-        ref.invalidate(todayEntryProvider(user.id));
+        ref.invalidate(gratitudeEntriesProvider(userId));
+        ref.invalidate(todayEntryProvider(userId));
         ref.read(_diaryTextProvider.notifier).state = '';
       }
 
