@@ -12,6 +12,11 @@ const _systemPrompt =
     'No ofrezcas diagnósticos ni tratamientos médicos. '
     'Si detectas señales de crisis o riesgo, recomienda contactar a un profesional de salud mental.';
 
+/// Limpia la key eliminando cualquier carácter de control oculto (BOM, \r, \n,
+/// tabs) que puede hacer que Google rechace la key con un error OAuth 401.
+String _sanitizeKey(String raw) =>
+    raw.replaceAll(RegExp(r'[\x00-\x1F\x7Fï»¿]'), '').trim();
+
 class ChatNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
   ChatNotifier() : super(const AsyncValue.data([])) {
     _addWelcome();
@@ -53,25 +58,20 @@ class ChatNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
     state = AsyncValue.data([...current, userMsg, thinking]);
 
     try {
-      final apiKey = (dotenv.env['GEMINI_API_KEY'] ?? '').trim();
+      final apiKey = _sanitizeKey(dotenv.env['GEMINI_API_KEY'] ?? '');
       if (apiKey.isEmpty) {
         _replaceThinking(current, userMsg,
             '⚠️ GEMINI_API_KEY no está configurada en el archivo .env. Agrégala para activar a Maya.');
         return;
       }
 
-      // Inicializa modelo de forma directa con API Key (sin OAuth / sin systemInstruction).
-      // El contexto del sistema se inyecta como primer turno del historial de conversación.
+      // Usa systemInstruction (API oficial) en lugar de inyectar el prompt
+      // en el historial — evita conflictos de rol que provocan el error OAuth.
       _session ??= GenerativeModel(
         model: 'gemini-1.5-flash',
         apiKey: apiKey,
-      ).startChat(history: [
-        Content.text(_systemPrompt),
-        Content.model([TextPart(
-          'Entendido. Soy Maya 🐱, tu asistente de bienestar emocional. '
-          'Responderé siempre en español con empatía y profesionalismo.',
-        )]),
-      ]);
+        systemInstruction: Content('system', [TextPart(_systemPrompt)]),
+      ).startChat();
 
       final response = await _session!.sendMessage(Content.text(trimmed));
       final reply =
@@ -79,15 +79,19 @@ class ChatNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
       _replaceThinking(current, userMsg, reply);
     } on GenerativeAIException catch (e) {
       final msg = e.message.toLowerCase();
-      if (msg.contains('api_key') || msg.contains('api key') || msg.contains('401')) {
+      if (msg.contains('oauth') ||
+          msg.contains('authentication credential') ||
+          msg.contains('invalid authentication') ||
+          msg.contains('api_key') ||
+          msg.contains('api key') ||
+          msg.contains('401')) {
         _replaceThinking(current, userMsg,
-            '🔑 API key de Gemini inválida o expirada. Verifica GEMINI_API_KEY en tu archivo .env.');
+            '🔑 API key de Gemini no válida. Ve a Google AI Studio → "Get API key", copia la key y actualiza GEMINI_API_KEY en tu archivo .env.');
       } else if (msg.contains('quota') || msg.contains('429')) {
         _replaceThinking(current, userMsg,
             '⏳ Límite de solicitudes alcanzado. Espera unos segundos e intenta de nuevo.');
       } else {
-        _replaceThinking(current, userMsg,
-            'Maya no pudo responder: ${e.message}');
+        _replaceThinking(current, userMsg, 'Maya no pudo responder: ${e.message}');
       }
     } catch (e) {
       _replaceThinking(current, userMsg,

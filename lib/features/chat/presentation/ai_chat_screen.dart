@@ -207,6 +207,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                   },
                 ),
         ),
+        _WatermarkLabel(isDark: isDark),
         _InputBar(
           isDark: isDark,
           controller: _controller,
@@ -261,8 +262,34 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             ],
           ),
         ),
+        _WatermarkLabel(isDark: isDark),
         _LockedInputBar(isDark: isDark),
       ],
+    );
+  }
+}
+
+// ─── Marca de agua del desarrollador ─────────────────────────────────────────
+
+class _WatermarkLabel extends StatelessWidget {
+  final bool isDark;
+  const _WatermarkLabel({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Center(
+        child: Text(
+          'Desarrollado por Akasha Escalante',
+          style: GoogleFonts.dmSans(
+            fontSize: 10,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.12)
+                : Colors.grey.withValues(alpha: 0.25),
+          ),
+        ),
+      ),
     );
   }
 }
