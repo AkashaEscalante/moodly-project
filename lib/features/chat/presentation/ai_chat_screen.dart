@@ -281,7 +281,7 @@ class _WatermarkLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 2),
       child: Center(
         child: Text(
-          'Desarrollado por Akasha Escalante',
+          'Akasha Escalante',
           style: GoogleFonts.dmSans(
             fontSize: 10,
             color: isDark
