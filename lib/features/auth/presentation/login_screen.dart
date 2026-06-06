@@ -70,6 +70,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF04040F),
       body: Stack(
+        clipBehavior: Clip.none,
         children: [
           // Glow blobs — substrato del glassmorphism
           Positioned(

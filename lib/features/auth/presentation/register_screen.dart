@@ -89,6 +89,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF04040F),
       body: Stack(
+        clipBehavior: Clip.none,
         children: [
           // Glow blobs
           Positioned(
