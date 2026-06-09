@@ -75,22 +75,26 @@ class ChatNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
       }
 
       if (apiKey.isEmpty) {
-        _replaceThinking(current, userMsg,
-            '⚠️ GEMINI_API_KEY no está configurada en el archivo .env. '
-            'Agrégala para activar a Maya.');
+        _replaceThinking(
+          current,
+          userMsg,
+          '⚠️ GEMINI_API_KEY no está configurada en el archivo .env. '
+          'Agrégala para activar a Maya.',
+        );
         return;
       }
 
       // systemInstruction es la API oficial — evita conflictos de rol en el
       // historial que provocaban el error OAuth en versiones anteriores.
       _session ??= GenerativeModel(
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         apiKey: apiKey,
         systemInstruction: Content('system', [TextPart(_systemPrompt)]),
       ).startChat();
 
       final response = await _session!.sendMessage(Content.text(trimmed));
-      final reply = response.text?.trim() ??
+      final reply =
+          response.text?.trim() ??
           'No pude generar una respuesta. Inténtalo de nuevo.';
       _replaceThinking(current, userMsg, reply);
     } on GenerativeAIException catch (e) {
@@ -110,16 +114,25 @@ class ChatNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
           'archivo .env. Luego haz flutter clean && flutter run.',
         );
       } else if (msg.contains('quota') || msg.contains('429')) {
-        _replaceThinking(current, userMsg,
-            '⏳ Límite de solicitudes alcanzado. Espera unos segundos e intenta de nuevo.');
+        _replaceThinking(
+          current,
+          userMsg,
+          '⏳ Límite de solicitudes alcanzado. Espera unos segundos e intenta de nuevo.',
+        );
       } else {
         _replaceThinking(
-            current, userMsg, 'Maya no pudo responder: ${e.message}');
+          current,
+          userMsg,
+          'Maya no pudo responder: ${e.message}',
+        );
       }
     } catch (e) {
       if (kDebugMode) debugPrint('[Maya] Error inesperado: $e');
-      _replaceThinking(current, userMsg,
-          'No pude conectarme en este momento. Verifica tu conexión a internet e intenta de nuevo.');
+      _replaceThinking(
+        current,
+        userMsg,
+        'No pude conectarme en este momento. Verifica tu conexión a internet e intenta de nuevo.',
+      );
     }
   }
 
@@ -144,5 +157,5 @@ class ChatNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
 
 final chatProvider =
     StateNotifierProvider<ChatNotifier, AsyncValue<List<ChatMessage>>>(
-  (ref) => ChatNotifier(),
-);
+      (ref) => ChatNotifier(),
+    );
